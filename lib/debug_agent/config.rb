@@ -1,45 +1,34 @@
 module DebugAgent
-  class Config
-    attr_accessor :enabled, :base_path, :llm
-
-    def initialize
-      @enabled = true
-      @base_path = '/agent'
-      @llm = LLMConfig.new
-    end
-
-    def self.from_env
-      c = new
-      c.enabled = ENV.fetch('DEBUG_AGENT_ENABLED', 'true').downcase == 'true'
-      c.base_path = ENV.fetch('DEBUG_AGENT_BASE_PATH', '/agent')
-      c.llm = LLMConfig.from_env
-      c
+  LLMConfig = Struct.new(
+    :base_url, :api_key, :model, :temperature, :max_tokens,
+    :max_tool_rounds, :timeout_seconds, :max_retries,
+    :retry_base_delay_ms, :retry_max_delay_ms, :context_window_tokens,
+    keyword_init: true
+  ) do
+    def defaults!
+      self.base_url            ||= ENV.fetch('LLM_BASE_URL', 'https://open.bigmodel.cn/api/coding/paas/v4')
+      self.api_key             ||= ENV.fetch('LLM_API_KEY', ENV.fetch('OPENAI_API_KEY', ''))
+      self.model               ||= ENV.fetch('LLM_MODEL', 'glm-5.2')
+      self.temperature         ||= 0.3
+      self.max_tokens          ||= 4096
+      self.max_tool_rounds     ||= 25
+      self.timeout_seconds     ||= 120
+      self.max_retries         ||= 3
+      self.retry_base_delay_ms ||= 1000
+      self.retry_max_delay_ms  ||= 30000
+      self.context_window_tokens ||= 100_000
+      self
     end
   end
 
-  class LLMConfig
-    attr_accessor :base_url, :api_key, :model, :temperature, :max_tokens, :max_tool_rounds, :timeout_seconds
-
-    def initialize
-      @base_url = 'https://api.openai.com/v1'
-      @api_key = ''
-      @model = 'gpt-4o'
-      @temperature = 0.3
-      @max_tokens = 4096
-      @max_tool_rounds = 10
-      @timeout_seconds = 120
-    end
-
+  Config = Struct.new(:enabled, :base_path, :llm, keyword_init: true) do
     def self.from_env
-      c = new
-      c.base_url = ENV.fetch('LLM_BASE_URL', 'https://api.openai.com/v1')
-      c.api_key = ENV.fetch('LLM_API_KEY', '')
-      c.model = ENV.fetch('LLM_MODEL', 'gpt-4o')
-      c.temperature = ENV.fetch('LLM_TEMPERATURE', '0.3').to_f
-      c.max_tokens = ENV.fetch('LLM_MAX_TOKENS', '4096').to_i
-      c.max_tool_rounds = ENV.fetch('LLM_MAX_TOOL_ROUNDS', '10').to_i
-      c.timeout_seconds = ENV.fetch('LLM_TIMEOUT_SECONDS', '120').to_i
-      c
+      llm = LLMConfig.new.defaults!
+      new(
+        enabled: ENV.fetch('DEBUG_AGENT_ENABLED', 'true') == 'true',
+        base_path: ENV.fetch('DEBUG_AGENT_BASE_PATH', '/agent'),
+        llm: llm
+      )
     end
   end
 end

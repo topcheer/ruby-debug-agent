@@ -1,4 +1,3 @@
-require 'gc'
 require 'objspace'
 require 'thread'
 
