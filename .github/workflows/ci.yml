@@ -35,7 +35,7 @@ jobs:
         run: |
           ruby -Ilib -e "
             require 'debug_agent'
-            count = DebugAgent.tool_registry.all_names.length
+            count = DebugAgent.registry.names.length
             raise \"Expected 20+ tools, got #{count}\" if count < 20
             puts \"OK: #{count} tools registered\"
           "
