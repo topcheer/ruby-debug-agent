@@ -2,77 +2,90 @@
 
 ## Title
 
-Ruby Debug Agent — AI-Powered In-Process Diagnostics (40 Tools / 13 Inspectors)
+Ruby Debug Agent v0.5.0 — Security, Health, Scheduler, Error Tracking, WebSocket (65 Tools)
 
 ## Description
 
-Chat with your LIVE Ruby application at runtime. The Ruby Debug Agent embeds directly into your Sinatra or Rails app and gives an AI assistant access to 40 diagnostic tools across 13 inspectors — GC profiler, ObjectSpace, threads, routes, Redis, Rails models/routes/schema, Sidekiq queues/workers, Puma cluster stats, fibers/signals, process info, HTTP requests, and more.
+Chat with your LIVE Ruby application at runtime. The Ruby Debug Agent embeds directly into your Sinatra or Rails app and gives an AI assistant access to 65 diagnostic tools across 25 inspectors — from GC profiling and ObjectSpace analysis to security configs, health checks, scheduled jobs, real-time error tracking, and WebSocket monitoring.
 
-No external agents. No attach-to-process. No separate monitoring stack. Just one gem, one line of code, and you're chatting with your running app.
+No external agents. No attach-to-process. No separate monitoring stack. Just one gem and you're chatting with your running app.
 
-### What you'll see in this demo
+### What's New in v0.5.0 — Five New Inspectors (13 Tools)
 
-**Section 1 — Ruby GC & ObjectSpace Deep Dive**
-GC.stat details, GC::Profiler data, forcing full GC, ObjectSpace.count_objects by type, total memory size, and top classes by instance count — all through natural language.
+**Security Inspector** — Auth configs, active sessions, CORS settings
+Query Devise, Warden, OmniAuth, or custom API-key strategies. Inspect session stores and review CORS middleware rules.
 
-**Section 2 — Threads + Fibers**
-Listing all threads with status and backtraces, thread count, main thread info, active Ruby Fibers, and registered signal/trap handlers.
+**Health Inspector** — Component-level health checks
+Register health blocks for database, Redis, memory, or any dependency. Get UP/DOWN/DEGRADED status with latency sampling and deep-dive diagnostics.
 
-**Section 3 — HTTP Requests + Routes**
-Discovering Sinatra/Rails routes and Rack middleware, analyzing recent HTTP traffic, identifying slow and error requests.
+**Scheduler Inspector** — Scheduled job visibility
+List jobs from Sidekiq::Cron, rufus-scheduler, or Thread-based timers. Track execution history, success/failure rates, and average duration.
 
-**Section 4 — Database + Redis**
-Process info, CPU time, memory usage, Redis server info, keyspace scan, and slow log.
+**Error Tracking Inspector** — In-process exception capture
+Ring buffer captures the last 50 unhandled exceptions via at_exit and Sinatra error handlers. Error stats, rate-per-minute, and pattern analysis grouped by class.
 
-**Section 5 — Rails Models + Sidekiq**
-Listing ActiveRecord models with associations, Rails routes with helper names, schema/migration status, Sidekiq queue depth, active workers, and job payloads.
+**WebSocket Inspector** — Real-time connection monitoring
+Track WebSocket connections from faye-websocket, websocket-driver, or ActionCable. Monitor message flow, connection stats, and channel subscriber counts.
 
-**Section 6 — Puma Stats + System**
-Puma cluster stats (workers, threads, backlog), system info, disk usage, and open file descriptors.
+### Demo Sections
 
-**Section 7 — Comprehensive Debugging**
-Multi-tool correlation: GC + ObjectSpace + threads + Redis + Sidekiq + Puma + requests — all in one analysis.
+Section 1 — Ruby GC and ObjectSpace: GC.stat, profiler, force GC, object counts, memory size
+Section 2 — Threads, Fibers, Signals: thread list, backtraces, fiber info, signal handlers
+Section 3 — HTTP Requests and Routes: route discovery, middleware, traffic analysis, latency
+Section 4 — Database, Redis, Cache: process info, Redis info, keyspace, cache hit/miss ratios
+Section 5 — Rails Models and Sidekiq: ActiveRecord models, routes, schema, queue depth, workers
+Section 6 — Security: auth configs, session stores, CORS rules
+Section 7 — Health Checks: component status, UP/DOWN/DEGRADED, latency diagnostics
+Section 8 — Scheduler: job schedules, execution history, success rates
+Section 9 — Error Tracking: captured exceptions, error stats, pattern analysis
+Section 10 — WebSocket: connections, message stats, channels
 
 ### Quick Start
 
-```ruby
-require 'sinatra/base'
-require 'debug_agent'
+Add to your Sinatra or Rack app:
 
-class MyApp < Sinatra::Base
-  register DebugAgent::Middleware
-end
-```
+    require 'debug_agent'
+    use DebugAgent::RackMiddleware
 
-Open `http://localhost:4567/agent` and start chatting with your app.
+Open http://localhost:4567/agent and start chatting.
+
+### Inspector Coverage — 25 Inspectors, 65 Tools
+
+GC — stats, profiler, force GC (3)
+ObjectSpace — count, memory, top classes (3)
+Threads — list, count, main, summary (4)
+Routes — routes, middleware (2)
+Process — info, CPU, env (3)
+Runtime — Ruby info, memory, load avg (3)
+HTTP Tracker — requests, errors, stats (3)
+System — info, disk, fds (3)
+Redis — info, latency, pool (4)
+Rails — models, routes, schema (3)
+Sidekiq — queues, workers, retries (3)
+Puma — cluster stats (1)
+Fibers/Signals — fiber, signals (3)
+Logging — buffer, info, level (3)
+Cache — stats, keys, clear (3)
+HTTP Client — connections (2)
+Metrics — registered, values (2)
+ActiveRecord — query stats (2)
+Faraday — connections (1)
+Concurrent — locks, state (2)
+Security — auth, sessions, CORS (3) NEW
+Health — status, detail (2) NEW
+Scheduler — jobs, history (2) NEW
+Error Tracking — errors, patterns (3) NEW
+WebSocket — connections, channels (3) NEW
 
 ### Features
 
-- 40 diagnostic tools across 13 inspectors
-- Streaming AI responses with real-time tool call badges
-- LLM-based context compression for long conversations
-- Custom tool registration via DebugAgent.register_tool()
-- Works with any OpenAI-compatible LLM endpoint
-- Zero external dependencies (no Datadog, no Grafana, no APM)
-- Dark-themed chat UI built-in (single HTML page, no frontend framework)
-
-### Inspector Coverage
-
-| Inspector | Tools | What it inspects |
-|-----------|-------|-----------------|
-| GC | 3 | GC stats, profiler, force GC |
-| ObjectSpace | 3 | Count objects, memory size, top classes |
-| Thread | 4 | Thread list, count, main thread, backtrace |
-| Route | 2 | Routes, Rack middleware |
-| Process | 4 | Process info, CPU time, env vars, memory |
-| Runtime | 3 | Ruby info, memory, load average |
-| HTTP Tracker | 4 | Requests, slow, errors, stats |
-| System | 3 | System info, disk, file descriptors |
-| Redis | 4 | Server info, keys, slowlog, command stats |
-| Rails | 3 | Models, routes, DB schema |
-| Sidekiq | 3 | Queues, workers, jobs |
-| Puma | 1 | Cluster stats: workers, threads, backlog |
-| Fibers/Signals | 3 | Fiber list, signal handlers, trap handlers |
+- 65 tools across 25 inspectors
+- Streaming AI responses with tool call badges
+- LLM-based context compression
+- Custom tool registration
+- Any OpenAI-compatible LLM endpoint
+- Zero external dependencies — no APM, no Grafana
+- Dark-themed chat UI built-in
 
 ### GitHub
 
@@ -80,37 +93,41 @@ github.com/topcheer/ruby-debug-agent
 
 ### Tags
 
-#ruby #rubydebugging #AI #Diagnostics #Sinatra #Rails #Redis #Sidekiq #Puma #GC #ObjectSpace #LLM #GLM #DeveloperTools #DevOps #ApplicationMonitoring #AIOps #Observability
+#ruby #sinatra #security #healthcheck #websocket #errorhandling #scheduler #sidekiq #rails #redis #observability #devops
 
 ## Chapters
 
 00:00 Introduction
-00:16 Ruby GC & ObjectSpace — Stats, Memory, Force GC
-01:16 Threads + Fibers/Signals
-02:16 HTTP Requests + Routes
-03:16 Process Info + Redis
-04:16 Comprehensive Multi-Tool Debugging
+00:24 GC Stats + ObjectSpace + Memory
+03:14 Threads + Fibers + Signals
+06:04 HTTP Requests + Routes + Redis
+08:55 Logging + Cache + Metrics
+11:45 Security — Auth, Sessions, CORS
+14:35 Health Checks + Scheduler
+17:26 Error Tracking + Process Info
+20:16 Outbound HTTP + ActiveRecord Stats
+23:07 System + Disk + FD
+25:57 Comprehensive Multi-Tool Debugging
 
 ---
 
-## Thumbnail Text (for image)
+## Thumbnail Text
 
-Ruby Debug Agent
-Chat with your LIVE app
-40 tools / 13 inspectors
+Ruby Debug Agent v0.5.0
+65 Tools / 25 Inspectors
+Security, Health, Errors, WebSocket
 
 ---
 
 ## Playlist
 
-AI Debug Agents Collection
-(Spring / .NET / Go / Node.js / Python / Ruby)
+AI Debug Agents (Spring / .NET / Go / Node / Python / Ruby)
 
 ---
 
 ## Category
 
-Science & Technology
+Science and Technology
 
 ## Language
 

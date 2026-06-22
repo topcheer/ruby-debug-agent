@@ -3,10 +3,14 @@ const fs = require('fs');
 const { execSync } = require('child_process');
 
 /**
- * Ruby Debug Agent v0.1.0 — Full demo recording
+ * Ruby Debug Agent v0.5.0 — Full demo recording (67 tools / 18 inspectors)
  *
- * 5 sections using NATURAL LANGUAGE prompts (no explicit tool names).
+ * 10 sections using NATURAL LANGUAGE prompts (no explicit tool names).
  * The LLM must autonomously decide which tools to invoke.
+ *
+ * New v0.5.0 inspectors: Security, Health, Scheduler, Error Tracking,
+ * WebSocket, plus Redis, Sinatra routes, ORM, Logging, Cache,
+ * Outbound HTTP, Metrics.
  *
  * Usage:
  *   1. Start demo: cd ruby-debug-agent && LLM_API_KEY=sk-... ruby demo/app.rb
@@ -25,7 +29,7 @@ async function typeMessage(page, text, charDelay = 8) {
   await input.pressSequentially(text, { delay: charDelay });
 }
 
-async function waitForAgentIdle(page, timeout = 120000) {
+async function waitForAgentIdle(page, timeout = 180000) {
   // Wait for send button to be re-enabled
   try {
     await page.waitForFunction(() => {
@@ -70,13 +74,11 @@ async function pause(page, ms = 3000) {
   await page.waitForTimeout(ms);
 }
 
-// ─── Section 1: Ruby Runtime + Memory + GC ──────────────────────────────
-// Tools: get_gc_stats, get_memory_summary, force_gc, get_object_space_stats,
-//        get_memory_size, get_runtime_info, get_process_info, get_cpu_time
+// ─── Section 1: GC Stats + ObjectSpace + Memory ────────────────────────────
 
-async function section1_runtime(page) {
-  console.log('  [1/5] Ruby Runtime + Memory + GC');
-  await typeMessage(page, "My app feels sluggish. Can you check the overall runtime health — memory usage, GC stats, and how long the process has been running?");
+async function section1_gc_memory(page) {
+  console.log('  [1/10] GC Stats + ObjectSpace + Memory');
+  await typeMessage(page, "My Ruby app feels sluggish. Can you check the overall runtime health — memory usage, GC stats, and the Ruby version we're running?");
   await sendAndWait(page);
   await pause(page, 4000);
 
@@ -84,72 +86,165 @@ async function section1_runtime(page) {
   await sendAndWait(page);
   await pause(page, 4000);
 
-  await typeMessage(page, "What's the CPU time breakdown? Show me user vs system time. Also list environment variables.");
-  await sendAndWait(page);
-  await pause(page, 4000);
-
   await typeMessage(page, "Try forcing a full garbage collection — I want to see how much memory can be reclaimed.");
   await sendAndWait(page);
   await pause(page, 5000);
+  console.log('  → Transition: Threads + Fibers + Signals');
 }
 
-// ─── Section 2: Threads + Process ─────────────────────────────────────────
-// Tools: get_thread_list, get_thread_count, get_main_thread_info,
-//        get_system_info, get_disk_usage
+// ─── Section 2: Threads + Fibers + Signals ─────────────────────────────────
 
-async function section2_threads(page) {
-  console.log('  [2/5] Threads + System Info');
+async function section2_threads_signals(page) {
+  console.log('  [2/10] Threads + Fibers + Signals');
   await typeMessage(page, "How many threads are running? List all of them with their status and backtraces.");
   await sendAndWait(page);
   await pause(page, 4000);
 
-  await typeMessage(page, "Show me the main thread details — priority, status, and what it's currently doing.");
+  await typeMessage(page, "Are there any Fibers active? Show me fiber details and their current state.");
   await sendAndWait(page);
   await pause(page, 4000);
 
-  await typeMessage(page, "What system resources are available? Check CPU count, disk space, and hostname.");
+  await typeMessage(page, "What signal handlers are registered? Show me which signals the application is listening for.");
   await sendAndWait(page);
   await pause(page, 5000);
+  console.log('  → Transition: HTTP Requests + Routes + Redis');
 }
 
-// ─── Section 3: Routes + Middleware ───────────────────────────────────────
-// Tools: get_routes, get_middleware_stack
+// ─── Section 3: HTTP Requests + Routes + Redis ─────────────────────────────
 
-async function section3_routes(page) {
-  console.log('  [3/5] Routes + Middleware Stack');
-  await typeMessage(page, "What API routes does this Sinatra application expose? List all registered routes.");
+async function section3_http_redis(page) {
+  console.log('  [3/10] HTTP Requests + Routes + Redis');
+  await typeMessage(page, "What API routes does this Sinatra application expose? List all registered routes with their methods.");
   await sendAndWait(page);
   await pause(page, 4000);
 
-  await typeMessage(page, "Show me the Rack middleware stack — what middleware layers are configured?");
-  await sendAndWait(page);
-  await pause(page, 5000);
-}
-
-// ─── Section 4: HTTP Request Tracking ──────────────────────────────────────
-// Tools: get_recent_requests, get_error_requests, get_request_stats
-
-async function section4_http(page) {
-  console.log('  [4/5] HTTP Request Tracking');
-  await typeMessage(page, "What HTTP requests have come in recently? Show me the request history.");
+  await typeMessage(page, "What HTTP requests have come in recently? Show me request statistics — P50, P95, P99 latency, and error rate.");
   await sendAndWait(page);
   await pause(page, 4000);
 
-  await typeMessage(page, "Show me request statistics — P50, P95, P99 latency, and error rate. Also show any error requests.");
+  await typeMessage(page, "Check the Redis connection pool — how many connections are active and idle? Show me any Redis operation stats.");
   await sendAndWait(page);
   await pause(page, 5000);
+  console.log('  → Transition: Logging + Cache Stats + Metrics');
 }
 
-// ─── Section 5: Comprehensive Debugging ─────────────────────────────────────
-// Cross-cutting scenario that exercises multiple inspectors together
+// ─── Section 4: Logging + Cache Stats + Metrics ────────────────────────────
 
-async function section5_comprehensive(page) {
-  console.log('  [5/5] Comprehensive Debugging Scenario');
-  await typeMessage(page, "I'm debugging a performance issue. Give me a comprehensive overview: memory and GC status, thread count, recent HTTP requests with errors, and route information — all in one summary.");
+async function section4_logging_cache(page) {
+  console.log('  [4/10] Logging + Cache Stats + Metrics');
+  await typeMessage(page, "Show me the logging configuration — what log level is set, what logger is used, and recent log entries.");
+  await sendAndWait(page);
+  await pause(page, 4000);
+
+  await typeMessage(page, "What's the cache status? Show me cache hit and miss rates, total keys, and memory usage for any in-memory caches.");
+  await sendAndWait(page);
+  await pause(page, 4000);
+
+  await typeMessage(page, "Show me the application metrics — request counts, error rates, latency histograms, and any custom metrics.");
+  await sendAndWait(page);
+  await pause(page, 5000);
+  console.log('  → Transition: Security (auth config, sessions, CORS)');
+}
+
+// ─── Section 5: Security (auth config, sessions, CORS) ─────────────────────
+
+async function section5_security(page) {
+  console.log('  [5/10] Security (auth config, sessions, CORS)');
+  await typeMessage(page, "I'm doing a security audit. What authentication and authorization middleware is configured? Show me the auth settings and any Rack protection.");
+  await sendAndWait(page);
+  await pause(page, 4000);
+
+  await typeMessage(page, "Are there any active sessions? Show me session details — how many are active and their expiry. Also show me the CORS configuration.");
+  await sendAndWait(page);
+  await pause(page, 4000);
+
+  await typeMessage(page, "Check for potential security issues — are there any environment variables exposing secrets, insecure headers, or missing protections?");
+  await sendAndWait(page);
+  await pause(page, 5000);
+  console.log('  → Transition: Health Checks + Scheduler');
+}
+
+// ─── Section 6: Health Checks + Scheduler ──────────────────────────────────
+
+async function section6_health_scheduler(page) {
+  console.log('  [6/10] Health Checks + Scheduler');
+  await typeMessage(page, "Run a health check on the database connection — is it reachable and responding quickly? Also check Redis connection health.");
+  await sendAndWait(page);
+  await pause(page, 4000);
+
+  await typeMessage(page, "Are there any scheduled or cron jobs running? Show me the scheduler status and any Sidekiq or Rufus scheduler jobs.");
+  await sendAndWait(page);
+  await pause(page, 4000);
+
+  await typeMessage(page, "Give me an overall readiness summary — are all critical dependencies healthy and are there any queue backlogs?");
+  await sendAndWait(page);
+  await pause(page, 5000);
+  console.log('  → Transition: Error Tracking + Process Info');
+}
+
+// ─── Section 7: Error Tracking + Process Info ─────────────────────────────
+
+async function section7_errors_process(page) {
+  console.log('  [7/10] Error Tracking + Process Info');
+  await typeMessage(page, "Show me recent errors tracked by the application — any exceptions, rescued errors, or error-level log entries.");
+  await sendAndWait(page);
+  await pause(page, 4000);
+
+  await typeMessage(page, "Are there any WebSocket connections active? Show me connection details and any connection-related errors.");
+  await sendAndWait(page);
+  await pause(page, 4000);
+
+  await typeMessage(page, "Show me process information — PID, CPU time breakdown (user vs system), and memory usage of the process.");
+  await sendAndWait(page);
+  await pause(page, 5000);
+  console.log('  → Transition: Outbound HTTP + ActiveRecord Stats');
+}
+
+// ─── Section 8: Outbound HTTP + ActiveRecord Stats ─────────────────────────
+
+async function section8_outbound_activerecord(page) {
+  console.log('  [8/10] Outbound HTTP + ActiveRecord Stats');
+  await typeMessage(page, "What outbound HTTP requests has the application made recently? Show me external API calls with their response times.");
+  await sendAndWait(page);
+  await pause(page, 4000);
+
+  await typeMessage(page, "Is ActiveRecord loaded? If so, show me the connection pool stats, query cache stats, and any slow queries.");
+  await sendAndWait(page);
+  await pause(page, 4000);
+
+  await typeMessage(page, "Show me the Rack middleware stack — what middleware layers are configured in this application?");
+  await sendAndWait(page);
+  await pause(page, 5000);
+  console.log('  → Transition: System + Disk + FD');
+}
+
+// ─── Section 9: System + Disk + FD ─────────────────────────────────────────
+
+async function section9_system_disk(page) {
+  console.log('  [9/10] System + Disk + FD');
+  await typeMessage(page, "What system resources are available? Check CPU count, load average, and hostname.");
+  await sendAndWait(page);
+  await pause(page, 4000);
+
+  await typeMessage(page, "What's the disk usage for the current working directory? How much space is free?");
+  await sendAndWait(page);
+  await pause(page, 4000);
+
+  await typeMessage(page, "How many file descriptors are currently open? Is there any risk of hitting the FD limit?");
+  await sendAndWait(page);
+  await pause(page, 5000);
+  console.log('  → Transition: Comprehensive Multi-Tool Debugging');
+}
+
+// ─── Section 10: Comprehensive Multi-Tool Debugging ────────────────────────
+
+async function section10_comprehensive(page) {
+  console.log('  [10/10] Comprehensive Multi-Tool Debugging');
+  await typeMessage(page, "I'm investigating a production incident. Give me a comprehensive overview: memory and GC status, thread count, recent HTTP requests with errors, database and Redis pool health, and any tracked errors — all in one summary.");
   await sendAndWait(page);
   await pause(page, 6000);
 
-  await typeMessage(page, "Now show me the top classes by instance count and total memory. What's using the most memory?");
+  await typeMessage(page, "Now show me: top classes by instance count and total memory, security configuration, scheduler status, and system load. Summarize the app's overall health and flag any concerns.");
   await sendAndWait(page);
   await pause(page, 5000);
 }
@@ -159,8 +254,8 @@ async function section5_comprehensive(page) {
 (async () => {
   console.log(`
 ╔══════════════════════════════════════════════════════════════╗
-║  Ruby Debug Agent v0.1.0 — Demo Recording                      ║
-║  ~25 tools / 8 inspectors                                      ║
+║  Ruby Debug Agent v0.5.0 — Demo Recording                      ║
+║  67 tools / 18 inspectors                                      ║
 ╚══════════════════════════════════════════════════════════════╝
   `);
 
@@ -203,11 +298,16 @@ async function section5_comprehensive(page) {
   await pause(page, 1000);
 
   const sections = [
-    { name: '01-runtime-gc', fn: section1_runtime },
-    { name: '02-threads-system', fn: section2_threads },
-    { name: '03-routes-middleware', fn: section3_routes },
-    { name: '04-http-requests', fn: section4_http },
-    { name: '05-comprehensive', fn: section5_comprehensive },
+    { name: '01-gc-objectspace-memory', fn: section1_gc_memory },
+    { name: '02-threads-fibers-signals', fn: section2_threads_signals },
+    { name: '03-http-routes-redis', fn: section3_http_redis },
+    { name: '04-logging-cache-metrics', fn: section4_logging_cache },
+    { name: '05-security', fn: section5_security },
+    { name: '06-health-scheduler', fn: section6_health_scheduler },
+    { name: '07-errors-process', fn: section7_errors_process },
+    { name: '08-outbound-activerecord', fn: section8_outbound_activerecord },
+    { name: '09-system-disk-fd', fn: section9_system_disk },
+    { name: '10-comprehensive', fn: section10_comprehensive },
   ];
 
   const startTime = Date.now();

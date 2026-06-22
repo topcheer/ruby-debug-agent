@@ -70,7 +70,7 @@ DB_PATH = ENV.fetch('DB_PATH', File.expand_path('demo_orders.db', __dir__))
 
 DB = SQLite3::Database.new(DB_PATH)
 DB.results_as_hash = true
-DB.type_translation = true
+DB.results_as_hash = true
 
 DB.execute(<<~SQL)
   CREATE TABLE IF NOT EXISTS orders (
@@ -211,6 +211,86 @@ rescue => e
   LOGGER.warn("Redis cache delete error: #{e.message}")
 end
 
+# ─── Optional: Faye WebSocket ─────────────────────────────────────────────────
+
+ws_available = false
+begin
+  require 'faye/websocket'
+  ws_available = true
+rescue LoadError
+  warn '[demo] faye-websocket gem not installed — WebSocket echo disabled'
+end
+
+# ─── API Key Authentication ───────────────────────────────────────────────────
+
+API_KEYS = ENV.fetch('API_KEYS', 'demo-key-12345').split(',').map(&:strip)
+
+DebugAgent.register_auth_config(:api_key, {
+  strategy: 'X-API-Key header',
+  secret_present: true,
+  token_expiry: 'per-request',
+  protected_routes: %w[/api/orders /api/auth-check],
+  key_count: API_KEYS.size
+})
+
+# ─── Health Checks ────────────────────────────────────────────────────────────
+
+DebugAgent.register_health_check(:database) do
+  begin
+    DB.get_first_value('SELECT 1')
+    { status: 'UP', detail: 'SQLite query successful' }
+  rescue => e
+    { status: 'DOWN', error: e.message }
+  end
+end
+
+DebugAgent.register_health_check(:redis) do
+  if REDIS
+    begin
+      pong = REDIS.ping
+      { status: pong == 'PONG' ? 'UP' : 'DEGRADED', detail: "PING -> #{pong}" }
+    rescue => e
+      { status: 'DOWN', error: e.message }
+    end
+  else
+    { status: 'DEGRADED', detail: 'Redis not configured' }
+  end
+end
+
+DebugAgent.register_health_check(:memory) do
+  rss = `ps -o rss= -p #{Process.pid}`.to_i / 1024.0
+  if rss > 500
+    { status: 'DEGRADED', detail: "RSS #{rss.round(1)} MB exceeds 500 MB threshold", rss_mb: rss.round(2) }
+  else
+    { status: 'UP', detail: "RSS #{rss.round(1)} MB within limits", rss_mb: rss.round(2) }
+  end
+end
+
+# ─── Scheduled Job: Periodic Cleanup ──────────────────────────────────────────
+
+DebugAgent.register_scheduled_job(:cleanup_expired_orders, 'every 30s',
+                                   source: 'thread-based', queue: nil)
+
+cleanup_thread = Thread.new do
+  loop do
+    sleep 30
+    start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    begin
+      DB.execute('DELETE FROM order_events WHERE created_at < ?', [(Time.now - 3600).iso8601])
+      affected = DB.changes
+      duration = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000.0).round(2)
+      DebugAgent.record_job_execution(:cleanup_expired_orders, duration, success: true)
+      LOGGER.info("[scheduler] cleanup ran, removed #{affected} old events (#{duration}ms)")
+    rescue => e
+      duration = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000.0).round(2)
+      DebugAgent.record_job_execution(:cleanup_expired_orders, duration, success: false, error: e.message)
+      LOGGER.error("[scheduler] cleanup failed: #{e.message}")
+    end
+  end
+end
+cleanup_thread.name = 'cleanup-scheduler'
+cleanup_thread.abort_on_exception = false
+
 # ─── Sinatra Modular App ──────────────────────────────────────────────────────
 
 class OrderApp < Sinatra::Base
@@ -224,12 +304,29 @@ class OrderApp < Sinatra::Base
     @request_start = Time.now
   end
 
+  # API Key auth on protected routes
+  before %r{/api/(orders|auth-check)} do
+    api_key = request.env['HTTP_X_API_KEY']
+    unless api_key && API_KEYS.include?(api_key)
+      halt 401, { error: 'Missing or invalid X-API-Key header', hint: "Use header: X-API-Key: #{API_KEYS.first}" }.to_json
+    end
+  end
+
   after do
     duration_ms = ((Time.now - @request_start) * 1000).round(2)
     DebugAgent::HttpRequestTracker.record(
       request.request_method, request.path, response.status, duration_ms
     )
     LOGGER.info("#{request.request_method} #{request.path} -> #{response.status} (#{duration_ms}ms)")
+  end
+
+  # Capture unhandled exceptions into the error tracking ring buffer
+  error StandardError do
+    err = env['sinatra.error']
+    DebugAgent.record_error(err, path: request.path, method: request.request_method)
+    LOGGER.error("Unhandled error: #{err.class}: #{err.message}")
+    status 500
+    { error: err.message, class: err.class.name }.to_json
   end
 
   # ─── Health & Utility ──────────────────────────────────────────────────────
@@ -270,6 +367,57 @@ class OrderApp < Sinatra::Base
   get '/api/error' do
     LOGGER.error('Intentional error triggered')
     halt 500, { error: 'Intentional 500 error for testing' }.to_json
+  end
+
+  # ─── Security & Error Tracking ─────────────────────────────────────────────
+
+  get '/api/panic' do
+    raise RuntimeError, 'Intentional panic for error tracking demo!'
+  end
+
+  get '/api/auth-check' do
+    {
+      authenticated: true,
+      api_key: request.env['HTTP_X_API_KEY'],
+      strategy: 'X-API-Key header',
+      protected_routes: %w[/api/orders /api/auth-check]
+    }.to_json
+  end
+
+  # ─── WebSocket Echo (faye-websocket) ────────────────────────────────────────
+
+  get '/ws' do
+    if ws_available && defined?(::Faye::WebSocket) && Faye::WebSocket.websocket?(env)
+      ws = Faye::WebSocket.new(env)
+      conn_id = ws.object_id
+      remote = request.ip
+
+      ws.on :open do |_event|
+        DebugAgent.track_ws_connection(conn_id, remote, 'echo')
+        LOGGER.info("[ws] connection opened from #{remote} (id=#{conn_id})")
+      end
+
+      ws.on :message do |event|
+        msg = event.data
+        DebugAgent.log_ws_message(conn_id, 'received', msg)
+        ws.send(msg)
+        DebugAgent.log_ws_message(conn_id, 'sent', msg)
+        LOGGER.info("[ws] echoed from #{conn_id}: #{msg.to_s[0...80]}")
+      end
+
+      ws.on :close do |_event|
+        DebugAgent.untrack_ws_connection(conn_id)
+        LOGGER.info("[ws] connection closed (id=#{conn_id})")
+      end
+
+      ws.rack_response
+    else
+      content_type :html
+      '<html><body><h1>WebSocket Echo Server</h1>' \
+        '<p>Connect using a WebSocket client to ws://localhost:4567/ws</p>' \
+        '<p>faye-websocket is not installed. Install with: gem install faye-websocket</p>' \
+        '</body></html>'
+    end
   end
 
   # ─── Orders CRUD (SQLite3 + Redis cache) ───────────────────────────────────
@@ -469,7 +617,7 @@ puts "  SQLite3:      #{DB_PATH}"
 puts "  Open http://localhost:4567/agent"
 puts ''
 puts '  API Endpoints:'
-puts '    GET    /api/orders             - List all orders'
+puts '    GET    /api/orders             - List all orders (requires X-API-Key)'
 puts '    POST   /api/orders             - Create new order (enqueues worker)'
 puts '    GET    /api/orders/:id         - Get order by ID (Redis cached)'
 puts '    PUT    /api/orders/:id         - Update order'
@@ -478,6 +626,12 @@ puts '    DELETE /api/orders/:id         - Delete order'
 puts '    GET    /api/health             - Health check (Redis + DB status)'
 puts '    GET    /api/slow               - Slow endpoint (500ms)'
 puts '    GET    /api/error              - Intentional 500 error'
+puts '    GET    /api/panic              - Triggers RuntimeError (error tracking)'
+puts '    GET    /api/auth-check         - Auth info (requires X-API-Key)'
+puts '    GET    /ws                     - WebSocket echo (if faye-websocket)'
+puts ''
+puts "  API Key:       #{API_KEYS.first} (header: X-API-Key)"
+puts "  WebSocket:     #{ws_available ? 'enabled (faye-websocket)' : 'disabled (gem not installed)'}"
 puts ''
 
 OrderApp.run!

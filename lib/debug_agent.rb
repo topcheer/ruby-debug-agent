@@ -30,6 +30,11 @@ require_relative 'debug_agent/inspectors/metrics'
 require_relative 'debug_agent/inspectors/active_record_stats'
 require_relative 'debug_agent/inspectors/faraday'
 require_relative 'debug_agent/inspectors/concurrent'
+require_relative 'debug_agent/inspectors/security'
+require_relative 'debug_agent/inspectors/health'
+require_relative 'debug_agent/inspectors/scheduler'
+require_relative 'debug_agent/inspectors/error_tracking'
+require_relative 'debug_agent/inspectors/websocket'
 
 module DebugAgent
   class Error < StandardError; end

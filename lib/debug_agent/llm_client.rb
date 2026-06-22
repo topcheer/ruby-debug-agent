@@ -83,72 +83,72 @@ module DebugAgent
 
     def stream_request(path, body, handler)
       uri = URI(@cfg.base_url + path)
-      http = Net::HTTP.new(uri.host, uri.port)
-      http.use_ssl = uri.scheme == 'https'
-      http.read_timeout = @cfg.timeout_seconds
 
-      request = Net::HTTP::Post.new(uri.path)
-      request['Authorization'] = "Bearer #{@cfg.api_key}"
-      request['Content-Type'] = 'application/json'
-      request.body = JSON.generate(body)
+      Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https', read_timeout: @cfg.timeout_seconds) do |http|
+        request = Net::HTTP::Post.new(uri.path)
+        request['Authorization'] = "Bearer #{@cfg.api_key}"
+        request['Content-Type'] = 'application/json'
+        request.body = JSON.generate(body)
 
-      response = http.request(request)
+        tool_call_map = {}
+        finish_reason = nil
+        usage = nil
 
-      if response.code.to_i >= 400
-        raise RetriableError.new(response.code.to_i, "HTTP #{response.code}: #{response.body}")
-      end
-
-      tool_call_map = {}
-      finish_reason = nil
-      usage = nil
-
-      response.read_body do |chunk|
-        chunk.split("\n").each do |line|
-          next unless line.start_with?('data: ')
-
-          data_str = line[6..]
-          next if data_str.strip == '[DONE]'
-
-          begin
-            parsed = JSON.parse(data_str)
-          rescue JSON::ParserError
-            next
+        http.request(request) do |response|
+          if response.code.to_i >= 400
+            err_body = response.read_body
+            raise RetriableError.new(response.code.to_i, "HTTP #{response.code}: #{err_body}")
           end
 
-          if parsed['usage'] && parsed['usage']['prompt_tokens']
-            usage = parsed['usage']
-          end
+          response.read_body do |chunk|
+            chunk.split("\n").each do |line|
+              next unless line.start_with?('data: ')
 
-          choices = parsed['choices'] || []
-          next if choices.empty?
+              data_str = line[6..]
+              next if data_str.strip == '[DONE]'
 
-          choice = choices[0]
-          delta = choice['delta'] || {}
+              begin
+                parsed = JSON.parse(data_str)
+              rescue JSON::ParserError
+                next
+              end
 
-          if delta['content'] && !delta['content'].empty?
-            handler.on_content(delta['content'])
-          end
+              if parsed['usage'] && parsed['usage']['prompt_tokens']
+                usage = parsed['usage']
+              end
 
-          if delta['tool_calls']
-            delta['tool_calls'].each do |tc|
-              idx = tc['index'] || 0
-              tool_call_map[idx] ||= { 'id' => '', 'type' => 'function', 'function' => { 'name' => '', 'arguments' => '' } }
-              entry = tool_call_map[idx]
-              entry['id'] = tc['id'] if tc['id']
-              entry['type'] = tc['type'] if tc['type']
-              fn = tc['function'] || {}
-              entry['function']['name'] += fn['name'] if fn['name']
-              entry['function']['arguments'] += fn['arguments'] if fn['arguments']
+              choices = parsed['choices'] || []
+              next if choices.empty?
+
+              choice = choices[0]
+              delta = choice['delta'] || {}
+
+              if delta['content'] && !delta['content'].empty?
+                handler.on_content(delta['content'])
+              end
+
+              if delta['tool_calls']
+                delta['tool_calls'].each do |tc|
+                  idx = tc['index'] || 0
+                  tool_call_map[idx] ||= { 'id' => '', 'type' => 'function', 'function' => { 'name' => '', 'arguments' => '' } }
+                  entry = tool_call_map[idx]
+                  entry['id'] = tc['id'] if tc['id']
+                  entry['type'] = tc['type'] if tc['type']
+                  fn = tc['function'] || {}
+                  entry['function']['name'] += fn['name'] if fn['name']
+                  entry['function']['arguments'] += fn['arguments'] if fn['arguments']
+                end
+              end
+
+              finish_reason = choice['finish_reason'] if choice['finish_reason']
             end
           end
-
-          finish_reason = choice['finish_reason'] if choice['finish_reason']
         end
+
+        tool_calls = tool_call_map.keys.sort.map { |k| tool_call_map[k] }.select { |tc| tc['function']['name'] && !tc['function']['name'].empty? }
+
+        handler.on_complete(tool_calls, finish_reason, usage)
       end
-
-      tool_calls = tool_call_map.keys.sort.map { |k| tool_call_map[k] }.select { |tc| tc['function']['name'] && !tc['function']['name'].empty? }
-
-      handler.on_complete(tool_calls, finish_reason, usage)
     end
 
     # ==================== Non-Streaming POST with retry ====================
