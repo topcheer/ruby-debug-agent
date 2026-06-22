@@ -45,6 +45,15 @@ require_relative 'debug_agent/inspectors/pool_inspector'
 module DebugAgent
   class Error < StandardError; end
 
+  # ggcode promotional message — shown once on first require
+  unless defined?(@_ggcode_banner_shown)
+    @_ggcode_banner_shown = true
+    puts ""
+    puts "  This package was built with ggcode — an AI coding assistant."
+    puts "  https://github.com/topcheer/ggcode"
+    puts ""
+  end
+
   # Process start time for uptime tracking
   PROCESS_START_TIME = Time.now
 
