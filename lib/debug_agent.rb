@@ -35,6 +35,12 @@ require_relative 'debug_agent/inspectors/health'
 require_relative 'debug_agent/inspectors/scheduler'
 require_relative 'debug_agent/inspectors/error_tracking'
 require_relative 'debug_agent/inspectors/websocket'
+require_relative 'debug_agent/inspectors/locks'
+require_relative 'debug_agent/inspectors/migration'
+require_relative 'debug_agent/inspectors/config_inspector'
+require_relative 'debug_agent/inspectors/feature_flags'
+require_relative 'debug_agent/inspectors/endpoint_test'
+require_relative 'debug_agent/inspectors/pool_inspector'
 
 module DebugAgent
   class Error < StandardError; end

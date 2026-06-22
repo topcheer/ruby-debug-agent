@@ -20,25 +20,26 @@ require 'time'
 
 REDIS_URL = ENV.fetch('REDIS_URL', 'redis://localhost:6379/0')
 
-redis_available = false
-begin
+REDIS_AVAILABLE = begin
   require 'redis'
-  REDIS = Redis.new(url: REDIS_URL)
-  REDIS.ping # connection test
-  redis_available = true
+  r = Redis.new(url: REDIS_URL)
+  r.ping # connection test
+  REDIS = r
   DebugAgent.register_redis_client(:cache, REDIS)
+  true
 rescue LoadError
   REDIS = nil
   warn '[demo] redis gem not installed — running without Redis caching'
+  false
 rescue => e
   REDIS = nil
   warn "[demo] Redis not reachable at #{REDIS_URL}: #{e.message}"
+  false
 end
 
 # ─── Optional: Sidekiq ────────────────────────────────────────────────────────
 
-sidekiq_available = false
-begin
+SIDEKIQ_AVAILABLE = begin
   require 'sidekiq'
 
   Sidekiq.configure_server do |config|
@@ -48,18 +49,19 @@ begin
     config.redis = { url: REDIS_URL }
   end
 
-  sidekiq_available = true
-
   # Register the default queue with the inspector
   begin
     DebugAgent.register_sidekiq_queue(:default, Sidekiq::Queue.new('default'))
   rescue => e
     warn "[demo] Could not register Sidekiq queue: #{e.message}"
   end
+  true
 rescue LoadError
   warn '[demo] sidekiq gem not installed — running without background jobs'
+  false
 rescue => e
   warn "[demo] Sidekiq unavailable: #{e.message}"
+  false
 end
 
 # ─── SQLite3 Storage ──────────────────────────────────────────────────────────
@@ -95,6 +97,72 @@ DB.execute(<<~SQL)
   )
 SQL
 
+# ─── v0.6.0: Feature Flags ───────────────────────────────────────────────────
+
+DebugAgent.register_feature_flag(:new_ui, enabled: true, variant: 'v2')
+DebugAgent.register_feature_flag(:experimental_cache, enabled: false)
+DebugAgent.register_feature_flag(:ai_search, enabled: true, variant: 'beta')
+
+# ─── v0.6.0: Database Migration Tracking ──────────────────────────────────────
+
+DB.execute(<<~SQL)
+  CREATE TABLE IF NOT EXISTS schema_migrations (
+    version    TEXT    PRIMARY KEY,
+    name       TEXT,
+    applied_at TEXT    NOT NULL
+  )
+SQL
+
+# Seed initial migration record if empty
+existing_migrations = DB.get_first_value('SELECT COUNT(*) FROM schema_migrations')
+if existing_migrations.to_i == 0
+  [
+    { version: '001', name: 'create_orders', applied_at: Time.now.iso8601 },
+    { version: '002', name: 'create_order_events', applied_at: Time.now.iso8601 },
+    { version: '003', name: 'add_indexes', applied_at: Time.now.iso8601 }
+  ].each do |m|
+    DB.execute(
+      'INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)',
+      [m[:version], m[:name], m[:applied_at]]
+    )
+  end
+end
+
+DebugAgent.register_migration_provider(-> {
+  applied_rows = DB.execute('SELECT version, name, applied_at FROM schema_migrations ORDER BY version')
+  applied = applied_rows.map do |row|
+    { version: row['version'].to_i, name: row['name'], applied_at: row['applied_at'] }
+  end
+
+  current = applied.map { |a| a[:version] }.max || 0
+
+  # Simulate one pending migration
+  pending = [{ version: 4, name: 'add_customer_email_column' }] if current < 4
+
+  {
+    current_version: current,
+    applied: applied,
+    pending: pending || []
+  }
+})
+
+# ─── v0.6.0: Locks & Mutex Registration ──────────────────────────────────────
+
+ORDER_MUTEX = Mutex.new
+DebugAgent.register_mutex(:order_counter, ORDER_MUTEX)
+
+# ─── v0.6.0: Connection Pool Registration ─────────────────────────────────────
+
+# Register the SQLite DB connection as a custom pool (no ActiveRecord in demo)
+DebugAgent.register_pool(:sqlite_primary, {
+  size: 5,
+  available: 5,
+  busy: 0,
+  dead: 0,
+  database: DB_PATH,
+  type: 'sqlite3_direct'
+})
+
 def db_order_from_row(row)
   {
     id: row['id'],
@@ -111,7 +179,7 @@ end
 
 # ─── Background Worker ────────────────────────────────────────────────────────
 
-if sidekiq_available && defined?(Sidekiq::Job)
+if SIDEKIQ_AVAILABLE && defined?(Sidekiq::Job)
   # Sidekiq 7.x (Sidekiq::Job)
   class ProcessOrderWorker
     include Sidekiq::Job
@@ -131,7 +199,7 @@ if sidekiq_available && defined?(Sidekiq::Job)
       LOGGER.info("[ProcessOrderWorker] Order ##{order_id} marked as processed")
     end
   end
-elsif sidekiq_available
+elsif SIDEKIQ_AVAILABLE
   # Sidekiq 6.x (Sidekiq::Worker + sidekiq_options)
   class ProcessOrderWorker
     include Sidekiq::Worker
@@ -213,12 +281,12 @@ end
 
 # ─── Optional: Faye WebSocket ─────────────────────────────────────────────────
 
-ws_available = false
-begin
+WS_AVAILABLE = begin
   require 'faye/websocket'
-  ws_available = true
+  true
 rescue LoadError
   warn '[demo] faye-websocket gem not installed — WebSocket echo disabled'
+  false
 end
 
 # ─── API Key Authentication ───────────────────────────────────────────────────
@@ -232,6 +300,26 @@ DebugAgent.register_auth_config(:api_key, {
   protected_routes: %w[/api/orders /api/auth-check],
   key_count: API_KEYS.size
 })
+
+# ─── v0.6.0: Configuration Inspector ─────────────────────────────────────────
+
+DebugAgent.register_config(:app, {
+  app_name: 'Order Management API',
+  port: 4567,
+  bind: '0.0.0.0',
+  db_path: DB_PATH,
+  redis_url: REDIS_URL,
+  api_key: API_KEYS.first,
+  sidekiq_enabled: defined?(::Sidekiq),
+  redis_enabled: !REDIS.nil?,
+  websocket_enabled: WS_AVAILABLE
+}, source: 'file')
+
+DebugAgent.register_config(:feature_flags, {
+  new_ui: true,
+  experimental_cache: false,
+  ai_search: true
+}, source: 'file')
 
 # ─── Health Checks ────────────────────────────────────────────────────────────
 
@@ -354,7 +442,7 @@ class OrderApp < Sinatra::Base
       services: {
         redis: redis_status,
         database: db_status,
-        sidekiq: sidekiq_available ? 'ENABLED' : 'INLINE'
+        sidekiq: SIDEKIQ_AVAILABLE ? 'ENABLED' : 'INLINE'
       }
     }.to_json
   end
@@ -387,7 +475,7 @@ class OrderApp < Sinatra::Base
   # ─── WebSocket Echo (faye-websocket) ────────────────────────────────────────
 
   get '/ws' do
-    if ws_available && defined?(::Faye::WebSocket) && Faye::WebSocket.websocket?(env)
+    if WS_AVAILABLE && defined?(::Faye::WebSocket) && Faye::WebSocket.websocket?(env)
       ws = Faye::WebSocket.new(env)
       conn_id = ws.object_id
       remote = request.ip
@@ -462,17 +550,21 @@ class OrderApp < Sinatra::Base
     total = quantity * price
     now = Time.now.iso8601
 
-    DB.execute(
-      'INSERT INTO orders (customer, item, quantity, price, total, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [customer, item, quantity, price, total, 'pending', now]
-    )
+    # Use the registered mutex to protect order creation (enables lock tracking)
+    id = nil
+    ORDER_MUTEX.synchronize do
+      DB.execute(
+        'INSERT INTO orders (customer, item, quantity, price, total, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [customer, item, quantity, price, total, 'pending', now]
+      )
 
-    id = DB.last_insert_row_id
+      id = DB.last_insert_row_id
 
-    DB.execute(
-      'INSERT INTO order_events (order_id, event, created_at) VALUES (?, ?, ?)',
-      [id, 'created', now]
-    )
+      DB.execute(
+        'INSERT INTO order_events (order_id, event, created_at) VALUES (?, ?, ?)',
+        [id, 'created', now]
+      )
+    end
 
     order = {
       id: id, customer: customer, item: item, quantity: quantity,
@@ -609,12 +701,20 @@ end
 OrderApp.seed_data!
 
 puts ''
-puts '  Ruby Debug Agent Demo'
+puts '  Ruby Debug Agent Demo  (v0.6.0)'
 puts '  Sinatra Order Management API'
-puts "  Redis:        #{redis_available ? 'enabled' : 'disabled (no cache)'}"
-puts "  Sidekiq:      #{sidekiq_available ? 'enabled' : 'inline (fallback)'}"
+puts "  Redis:        #{REDIS_AVAILABLE ? 'enabled' : 'disabled (no cache)'}"
+puts "  Sidekiq:      #{SIDEKIQ_AVAILABLE ? 'enabled' : 'inline (fallback)'}"
 puts "  SQLite3:      #{DB_PATH}"
-puts "  Open http://localhost:4567/agent"
+puts '  Open http://localhost:4567/agent'
+puts ''
+puts '  v0.6.0 Inspectors:'
+puts '    Config       - get_config_snapshot, get_env_vars, get_config_sources'
+puts '    Feature Flags- get_feature_flags, evaluate_flag'
+puts '    Migration    - get_migration_status, get_pending_migrations, get_migration_history'
+puts '    Endpoint Test- test_endpoint, batch_test_endpoints, get_endpoint_coverage'
+puts '    Locks        - get_lock_contention, get_gvl_stats, detect_deadlock'
+puts '    Pool         - get_pool_details, detect_pool_leaks, get_pool_wait_stats'
 puts ''
 puts '  API Endpoints:'
 puts '    GET    /api/orders             - List all orders (requires X-API-Key)'
@@ -631,7 +731,7 @@ puts '    GET    /api/auth-check         - Auth info (requires X-API-Key)'
 puts '    GET    /ws                     - WebSocket echo (if faye-websocket)'
 puts ''
 puts "  API Key:       #{API_KEYS.first} (header: X-API-Key)"
-puts "  WebSocket:     #{ws_available ? 'enabled (faye-websocket)' : 'disabled (gem not installed)'}"
+puts "  WebSocket:     #{WS_AVAILABLE ? 'enabled (faye-websocket)' : 'disabled (gem not installed)'}"
 puts ''
 
 OrderApp.run!

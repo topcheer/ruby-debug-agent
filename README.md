@@ -1,12 +1,12 @@
 # Ruby Debug Agent
 
 [![Gem Version](https://img.shields.io/badge/gem-debug--agent-red)](https://github.com/topcheer/ruby-debug-agent)
-![Tools](https://img.shields.io/badge/tools-67-blue)
-![Inspectors](https://img.shields.io/badge/inspectors-25-green)
+![Tools](https://img.shields.io/badge/tools-84-blue)
+![Inspectors](https://img.shields.io/badge/inspectors-31-green)
 ![Ruby](https://img.shields.io/badge/Ruby-2.7%2B-CC342D)
 ![Gem](https://img.shields.io/badge/gem-debug--agent-red)
 
-An AI-powered runtime debugging agent that embeds directly into your Ruby application. Add one gem, configure an LLM key, and chat with your live app at `/agent` to inspect GC, ObjectSpace, threads, routes, Redis, Rails models/routes, Sidekiq queues, Puma stats, fibers/signals, process info, HTTP requests, and more — **54 diagnostic tools across 20 inspectors**.
+An AI-powered runtime debugging agent that embeds directly into your Ruby application. Add one gem, configure an LLM key, and chat with your live app at `/agent` to inspect GC, ObjectSpace, threads, routes, Redis, Rails models/routes, Sidekiq queues, Puma stats, fibers/signals, process info, HTTP requests, and more — **84 diagnostic tools across 31 inspectors**.
 
 ## Version Support
 
@@ -71,10 +71,10 @@ http://localhost:4567/agent
 - **Context compression** — automatically summarizes old conversation when token limit is approached
 - **Dark-themed chat UI** with full markdown rendering (tables, code blocks, lists)
 - **Max tool rounds** (25) with forced final summary when limit is reached
-- **54 diagnostic tools** across **20 inspectors**
+- **84 diagnostic tools** across **31 inspectors**
 - Zero external dependencies (no Datadog, no Grafana, no APM)
 
-## Inspectors & Tools (54)
+## Inspectors & Tools (84)
 
 ### GC Inspector
 | Tool | Description |
@@ -208,6 +208,47 @@ http://localhost:4567/agent
 | Tool | Description |
 |------|-------------|
 | `get_concurrent_state` | Ruby concurrency primitives state (Mutex, ConditionVariable, Queue) |
+
+### Deadlock & Lock Contention Inspector (v0.6.0)
+| Tool | Description |
+|------|-------------|
+| `get_lock_contention` | Mutex contention stats (wait time, hold time, acquisition count) |
+| `detect_deadlock` | Analyze all threads for deadlock patterns (circular wait detection) |
+| `get_mutex_stats` | Per-lock statistics: total acquisitions, contentions, average wait time |
+
+### Database Migration Inspector (v0.6.0)
+| Tool | Description |
+|------|-------------|
+| `get_migration_status` | Current schema version, applied count, last migration applied |
+| `get_pending_migrations` | Migrations not yet applied (version, description, dependencies) |
+| `get_migration_history` | Applied migration history (version, applied_at, duration_ms) |
+
+### Configuration Inspector (v0.6.0)
+| Tool | Description |
+|------|-------------|
+| `get_config_snapshot` | All registered config values (sensitive keys masked) |
+| `get_env_vars_masked` | Process environment variables with secret values redacted |
+| `get_config_sources` | Config source hierarchy (env, file, defaults) with effective values |
+
+### Feature Flags Inspector (v0.6.0)
+| Tool | Description |
+|------|-------------|
+| `get_feature_flags` | List all registered feature flags with current state |
+| `evaluate_feature_flag` | Evaluate a specific flag for a given context/user |
+
+### Endpoint Testing Inspector (v0.6.0)
+| Tool | Description |
+|------|-------------|
+| `test_endpoint` | Make an HTTP request to own app, return full response (status, headers, body) |
+| `batch_test_endpoints` | Test multiple endpoints in one call with aggregated results |
+| `get_endpoint_coverage` | Compare registered routes vs tested endpoints (coverage report) |
+
+### Connection Pool Inspector (v0.6.0)
+| Tool | Description |
+|------|-------------|
+| `get_pool_details` | Detailed DB pool stats (pool size, active, idle, waiting, max) |
+| `detect_pool_leaks` | Heuristic leak detection (growing pool, high wait ratio, saturation) |
+| `get_pool_wait_stats` | Connection acquire wait stats (avg, P95, max wait, timeout count) |
 
 ## Custom Tools
 
