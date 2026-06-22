@@ -1,5 +1,9 @@
+*.db
 *.gem
-.bundle/
-vendor/
-.env
 .DS_Store
+.bundle/
+.env
+__pycache__/
+demo-recordings/
+node_modules/
+vendor/

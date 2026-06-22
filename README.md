@@ -1,6 +1,10 @@
 # Ruby Debug Agent
 
-An AI-powered runtime debugging agent that embeds directly into your Ruby application. Add one gem, configure an LLM key, and chat with your live app at `/agent` to inspect GC, ObjectSpace, threads, routes, process info, HTTP requests, and more.
+[![Gem Version](https://img.shields.io/badge/gem-debug--agent-red)](https://github.com/topcheer/ruby-debug-agent)
+![Tools](https://img.shields.io/badge/tools-40-blue)
+![Inspectors](https://img.shields.io/badge/inspectors-13-green)
+
+An AI-powered runtime debugging agent that embeds directly into your Ruby application. Add one gem, configure an LLM key, and chat with your live app at `/agent` to inspect GC, ObjectSpace, threads, routes, Redis, Rails models/routes, Sidekiq queues, Puma stats, fibers/signals, process info, HTTP requests, and more — **40 diagnostic tools across 13 inspectors**.
 
 ## Quick Start
 
@@ -51,9 +55,10 @@ http://localhost:4567/agent
 - **Context compression** — automatically summarizes old conversation when token limit is approached
 - **Dark-themed chat UI** with full markdown rendering (tables, code blocks, lists)
 - **Max tool rounds** (25) with forced final summary when limit is reached
-- **26 diagnostic tools** across 8 inspectors
+- **40 diagnostic tools** across **13 inspectors**
+- Zero external dependencies (no Datadog, no Grafana, no APM)
 
-## Inspectors & Tools (26)
+## Inspectors & Tools (40)
 
 ### GC Inspector
 | Tool | Description |
@@ -75,6 +80,7 @@ http://localhost:4567/agent
 | `get_thread_list` | List all threads with status and backtrace summary |
 | `get_thread_count` | Thread count |
 | `get_main_thread_info` | Main thread priority, status |
+| `get_thread_backtrace` | Full backtrace for a specific thread |
 
 ### Route Inspector
 | Tool | Description |
@@ -88,6 +94,7 @@ http://localhost:4567/agent
 | `get_process_info` | PID, ppid, platform, Ruby version, uptime |
 | `get_cpu_time` | Process.times() user/sys CPU time |
 | `get_environment_variables` | Environment variables (masked secrets) |
+| `get_process_memory` | Process RSS, VMS, and memory growth trend |
 
 ### Runtime Inspector
 | Tool | Description |
@@ -108,8 +115,42 @@ http://localhost:4567/agent
 | Tool | Description |
 |------|-------------|
 | `get_system_info` | Hostname, CPU cores, disk |
-| `get_disk_usage` | Disk usage for working directory |
+| `get_disk_usage` | Disk usage for the working directory |
 | `get_file_descriptors` | Open file descriptor count |
+
+### Redis Inspector
+| Tool | Description |
+|------|-------------|
+| `get_redis_info` | Redis server info: memory, clients, persistence |
+| `get_redis_keys` | Scan Redis keyspace with pattern matching |
+| `get_redis_slowlog` | Redis slow query log entries |
+| `get_redis_stats` | Per-command call count, hit/miss ratio, keyspace stats |
+
+### Rails Inspector
+| Tool | Description |
+|------|-------------|
+| `get_rails_models` | List ActiveRecord models with table names and associations |
+| `get_rails_routes` | List Rails routes with helper names and HTTP verbs |
+| `get_rails_db_schema` | Database schema version and pending migrations |
+
+### Sidekiq Inspector
+| Tool | Description |
+|------|-------------|
+| `get_sidekiq_queues` | Queue list with depth, latency, and size |
+| `get_sidekiq_workers` | Active Sidekiq workers with job and host info |
+| `get_sidekiq_jobs` | Inspect jobs in a queue/retry set with payload |
+
+### Puma Inspector
+| Tool | Description |
+|------|-------------|
+| `get_puma_stats` | Puma cluster stats: workers, threads, running/backlog, boot time |
+
+### Fibers/Signals Inspector
+| Tool | Description |
+|------|-------------|
+| `get_fiber_list` | List active Ruby Fibers with state and backtrace |
+| `get_signal_handlers` | List registered signal handlers (Signal.trap) |
+| `get_trap_handlers` | Inspect trap handlers for SIGINT, SIGTERM, etc. |
 
 ## Custom Tools
 
@@ -133,11 +174,35 @@ end
 
 ## Run the Demo
 
+The demo uses **Sinatra** + **redis-rb** + **SQLite** + **Sidekiq**. Start Redis with Docker Compose first:
+
+### Docker Compose
+
+```yaml
+# docker-compose.yml
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --save 60 1 --loglevel warning
+```
+
+```bash
+docker compose up -d
+```
+
+### Start the app
+
 ```bash
 export LLM_API_KEY=your-key
 cd demo && ruby -I../lib app.rb
 # Open http://localhost:4567/agent
 ```
+
+## RubyGems
+
+[![Gem](https://img.shields.io/badge/rubygems-debug--agent-red)](https://github.com/topcheer/ruby-debug-agent)
 
 ## License
 

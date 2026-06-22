@@ -18,6 +18,11 @@ require_relative 'debug_agent/inspectors/object_space'
 require_relative 'debug_agent/inspectors/threads'
 require_relative 'debug_agent/inspectors/routes'
 require_relative 'debug_agent/inspectors/process_info'
+require_relative 'debug_agent/inspectors/core_ext'
+require_relative 'debug_agent/inspectors/redis'
+require_relative 'debug_agent/inspectors/rails'
+require_relative 'debug_agent/inspectors/sidekiq'
+require_relative 'debug_agent/inspectors/puma'
 
 module DebugAgent
   class Error < StandardError; end
