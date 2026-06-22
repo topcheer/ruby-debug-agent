@@ -85,14 +85,11 @@ github.com/topcheer/ruby-debug-agent
 ## Chapters
 
 00:00 Introduction
-01:15 Ruby GC & ObjectSpace — Stats, Memory, Force GC
-03:20 Threads + Fibers/Signals
-05:30 HTTP Requests + Routes
-07:10 Process Info + Redis
-09:15 Rails Models + Sidekiq
-10:50 Puma Stats + System
-12:20 Comprehensive Multi-Tool Debugging
-14:00 Summary + Quick Start Guide
+00:16 Ruby GC & ObjectSpace — Stats, Memory, Force GC
+01:16 Threads + Fibers/Signals
+02:16 HTTP Requests + Routes
+03:16 Process Info + Redis
+04:16 Comprehensive Multi-Tool Debugging
 
 ---
 
