@@ -40,7 +40,7 @@ jobs:
           TAG="${GITHUB_REF#refs/tags/}"
           VERSION="${TAG#v}"
           echo "Tag: $TAG  Version: $VERSION"
-          sed -i "s/VERSION = .*/VERSION = '\"$VERSION\"'.freeze/" lib/debug_agent/version.rb
+          sed -i "s/VERSION = .*/VERSION = '${VERSION}'.freeze/" lib/debug_agent/version.rb
           cat lib/debug_agent/version.rb
 
       - name: Build gem
