@@ -302,6 +302,12 @@ cd demo && ruby -I../lib app.rb
 
 [![Gem](https://img.shields.io/badge/rubygems-debug--agent-red)](https://github.com/topcheer/ruby-debug-agent)
 
+## Built With
+
+[![ggcode](https://img.shields.io/badge/built%20with-ggcode-blue)](https://github.com/topcheer/ggcode)
+
+This project was built using [ggcode](https://github.com/topcheer/ggcode) — an AI coding assistant for terminal-based development.
+
 ## License
 
 MIT
