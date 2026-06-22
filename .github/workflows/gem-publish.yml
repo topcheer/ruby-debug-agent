@@ -1,16 +1,8 @@
 # ─────────────────────────────────────────────────────────────────
 # gem-publish — Push a tag `v1.2.3` to publish to RubyGems
 #
-# Usage:
-#   git tag v0.2.0
-#   git push origin v0.2.0
-#
 # Uses RubyGems Trusted Publishing (OIDC) — no API key needed.
 # Configure at: https://rubygems.org/gems/debug-agent/trusted_publishers
-#   Repository owner: topcheer
-#   Repository name: ruby-debug-agent
-#   Workflow filename: gem-publish.yml
-#   Environment: release
 # ─────────────────────────────────────────────────────────────────
 name: gem
 
@@ -39,7 +31,7 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ruby
-          bundler-cache: false
+          bundler-cache: true
 
       - name: Sync version from tag
         run: |
@@ -48,9 +40,6 @@ jobs:
           echo "Tag: $TAG  Version: $VERSION"
           sed -i "s/VERSION = .*/VERSION = '${VERSION}'.freeze/" lib/debug_agent/version.rb
           cat lib/debug_agent/version.rb
-
-      - name: Build gem
-        run: gem build debug-agent.gemspec
 
       - name: Release gem
         uses: rubygems/release-gem@v1
