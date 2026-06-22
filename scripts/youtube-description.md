@@ -76,7 +76,7 @@ Open `http://localhost:4567/agent` and start chatting with your app.
 
 ### GitHub
 
-https://github.com/topcheer/ruby-debug-agent
+github.com/topcheer/ruby-debug-agent
 
 ### Tags
 
