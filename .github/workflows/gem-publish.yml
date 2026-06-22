@@ -1,0 +1,86 @@
+# ─────────────────────────────────────────────────────────────────
+# gem-publish — Push a tag `v1.2.3` to publish to RubyGems
+#
+# Usage:
+#   git tag v0.2.0
+#   git push origin v0.2.0
+#
+# Requires secret: RUBYGEMS_API_KEY
+# Get it at: https://rubygems.org/settings/edit
+# Add at: https://github.com/topcheer/ruby-debug-agent/settings/secrets/actions
+# ─────────────────────────────────────────────────────────────────
+name: gem
+
+on:
+  push:
+    tags: ["v*"]
+
+concurrency:
+  group: publish-gem-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Publish to RubyGems
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: false
+
+      - name: Sync version from tag
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#v}"
+          echo "Tag: $TAG  Version: $VERSION"
+          sed -i "s/VERSION = .*/VERSION = '\"$VERSION\"'.freeze/" lib/debug_agent/version.rb
+          cat lib/debug_agent/version.rb
+
+      - name: Build gem
+        run: gem build debug-agent.gemspec
+
+      - name: Check if version already published
+        id: release
+        run: |
+          version="$(ruby -r ./lib/debug_agent/version -e 'puts DebugAgent::VERSION')"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          if gem list debug-agent --remote --exact --version "${version}" 2>/dev/null | grep -q debug-agent; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "debug-agent ${version} already exists on RubyGems; skipping."
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish to RubyGems
+        if: steps.release.outputs.publish == 'true'
+        run: |
+          mkdir -p ~/.gem
+          echo -e "---\n:rubygems_api_key: ${{ secrets.RUBYGEMS_API_KEY }}" > ~/.gem/credentials
+          chmod 0600 ~/.gem/credentials
+          gem push "debug-agent-${{ steps.release.outputs.version }}.gem"
+
+      - name: Create GitHub Release
+        if: steps.release.outputs.publish == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          body: |
+            ### RubyGems
+            ```ruby
+            gem 'debug-agent', '~> ${{ steps.release.outputs.version }}'
+            ```
+
+            ### Quick Start
+            ```ruby
+            require 'debug_agent'
+            register DebugAgent::Middleware
+            ```
