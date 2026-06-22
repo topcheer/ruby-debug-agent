@@ -23,6 +23,13 @@ require_relative 'debug_agent/inspectors/redis'
 require_relative 'debug_agent/inspectors/rails'
 require_relative 'debug_agent/inspectors/sidekiq'
 require_relative 'debug_agent/inspectors/puma'
+require_relative 'debug_agent/inspectors/logging'
+require_relative 'debug_agent/inspectors/cache'
+require_relative 'debug_agent/inspectors/http_client'
+require_relative 'debug_agent/inspectors/metrics'
+require_relative 'debug_agent/inspectors/active_record_stats'
+require_relative 'debug_agent/inspectors/faraday'
+require_relative 'debug_agent/inspectors/concurrent'
 
 module DebugAgent
   class Error < StandardError; end
