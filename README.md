@@ -1,12 +1,12 @@
 # Ruby Debug Agent
 
 [![Gem Version](https://img.shields.io/badge/gem-debug--agent-red)](https://github.com/topcheer/ruby-debug-agent)
-![Tools](https://img.shields.io/badge/tools-84-blue)
-![Inspectors](https://img.shields.io/badge/inspectors-31-green)
+![Tools](https://img.shields.io/badge/tools-98-blue)
+![Inspectors](https://img.shields.io/badge/inspectors-36-green)
 ![Ruby](https://img.shields.io/badge/Ruby-2.7%2B-CC342D)
 ![Gem](https://img.shields.io/badge/gem-debug--agent-red)
 
-An AI-powered runtime debugging agent that embeds directly into your Ruby application. Add one gem, configure an LLM key, and chat with your live app at `/agent` to inspect GC, ObjectSpace, threads, routes, Redis, Rails models/routes, Sidekiq queues, Puma stats, fibers/signals, process info, HTTP requests, and more — **84 diagnostic tools across 31 inspectors**.
+An AI-powered runtime debugging agent that embeds directly into your Ruby application. Add one gem, configure an LLM key, and chat with your live app at `/agent` to inspect GC, ObjectSpace, threads, routes, Redis, Rails models/routes, Sidekiq queues, Puma stats, fibers/signals, process info, HTTP requests, and more — **98 diagnostic tools across 36 inspectors**.
 
 ## Version Support
 
@@ -71,10 +71,10 @@ http://localhost:4567/agent
 - **Context compression** — automatically summarizes old conversation when token limit is approached
 - **Dark-themed chat UI** with full markdown rendering (tables, code blocks, lists)
 - **Max tool rounds** (25) with forced final summary when limit is reached
-- **84 diagnostic tools** across **31 inspectors**
+- **98 diagnostic tools** across **36 inspectors**
 - Zero external dependencies (no Datadog, no Grafana, no APM)
 
-## Inspectors & Tools (84)
+## Inspectors & Tools (98)
 
 ### GC Inspector
 | Tool | Description |
@@ -249,6 +249,40 @@ http://localhost:4567/agent
 | `get_pool_details` | Detailed DB pool stats (pool size, active, idle, waiting, max) |
 | `detect_pool_leaks` | Heuristic leak detection (growing pool, high wait ratio, saturation) |
 | `get_pool_wait_stats` | Connection acquire wait stats (avg, P95, max wait, timeout count) |
+
+### CPU Profiler Inspector (v0.7.0)
+| Tool | Description |
+|------|-------------|
+| `start_cpu_profile` | Start a CPU profiling session (stackprof/stackprof-native) |
+| `stop_cpu_profile` | Stop CPU profiling and return collected profile data |
+| `get_top_functions` | Get top CPU-consuming functions from the current profile |
+
+### Memory Leak Detector Inspector (v0.7.0)
+| Tool | Description |
+|------|-------------|
+| `take_heap_snapshot` | Capture an ObjectSpace heap snapshot for leak analysis |
+| `compare_heap_snapshots` | Compare two heap snapshots to identify object growth |
+| `get_leak_candidates` | Identify objects likely to be memory leaks |
+
+### Deployment/Build Info Inspector (v0.7.0)
+| Tool | Description |
+|------|-------------|
+| `get_build_info` | Build version, commit hash, and gem metadata |
+| `get_deployment_info` | Deployment environment, container, and orchestration metadata |
+| `get_runtime_version` | Ruby interpreter version, engine, and platform details |
+
+### Snapshot & Diff Inspector (v0.7.0)
+| Tool | Description |
+|------|-------------|
+| `take_snapshot` | Capture a runtime state snapshot |
+| `compare_snapshots` | Compare two snapshots to identify state changes |
+| `list_snapshots` | List all saved snapshots with timestamps |
+
+### Service Registry Inspector (v0.7.0)
+| Tool | Description |
+|------|-------------|
+| `get_registered_services` | List all registered application services |
+| `get_service_dependencies` | Map service-to-service dependency graph |
 
 ## Custom Tools
 

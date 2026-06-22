@@ -41,6 +41,11 @@ require_relative 'debug_agent/inspectors/config_inspector'
 require_relative 'debug_agent/inspectors/feature_flags'
 require_relative 'debug_agent/inspectors/endpoint_test'
 require_relative 'debug_agent/inspectors/pool_inspector'
+require_relative 'debug_agent/inspectors/cpu_profile'
+require_relative 'debug_agent/inspectors/leak_detector'
+require_relative 'debug_agent/inspectors/build_info'
+require_relative 'debug_agent/inspectors/snapshot'
+require_relative 'debug_agent/inspectors/service_registry'
 
 module DebugAgent
   class Error < StandardError; end
