@@ -1,10 +1,26 @@
 # Ruby Debug Agent
 
 [![Gem Version](https://img.shields.io/badge/gem-debug--agent-red)](https://github.com/topcheer/ruby-debug-agent)
-![Tools](https://img.shields.io/badge/tools-54-blue)
-![Inspectors](https://img.shields.io/badge/inspectors-20-green)
+![Tools](https://img.shields.io/badge/tools-67-blue)
+![Inspectors](https://img.shields.io/badge/inspectors-25-green)
+![Ruby](https://img.shields.io/badge/Ruby-2.7%2B-CC342D)
+![Gem](https://img.shields.io/badge/gem-debug--agent-red)
 
 An AI-powered runtime debugging agent that embeds directly into your Ruby application. Add one gem, configure an LLM key, and chat with your live app at `/agent` to inspect GC, ObjectSpace, threads, routes, Redis, Rails models/routes, Sidekiq queues, Puma stats, fibers/signals, process info, HTTP requests, and more — **54 diagnostic tools across 20 inspectors**.
+
+## Version Support
+
+| Ruby Version | Status |
+|--------------|--------|
+| 2.6          | Not supported |
+| 2.7          | Minimum supported |
+| 3.0          | Supported (Fiber.list available) |
+| 3.1          | Supported |
+| 3.2          | Supported |
+| 3.3          | Supported |
+| 3.4          | Tested |
+
+> Requires Ruby 2.7+ for pattern matching guards. Framework inspectors (Rails, Sidekiq, Puma) are optional and auto-detected via `defined?`.
 
 ## Quick Start
 
