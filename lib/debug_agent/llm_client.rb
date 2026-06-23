@@ -84,7 +84,7 @@ module DebugAgent
     def stream_request(path, body, handler)
       uri = URI(@cfg.base_url + path)
 
-      Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https', read_timeout: @cfg.timeout_seconds) do |http|
+      Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https', read_timeout: @cfg.timeout_seconds, open_timeout: 10) do |http|
         request = Net::HTTP::Post.new(uri.path)
         request['Authorization'] = "Bearer #{@cfg.api_key}"
         request['Content-Type'] = 'application/json'
@@ -181,6 +181,7 @@ module DebugAgent
       http = Net::HTTP.new(uri.host, uri.port)
       http.use_ssl = uri.scheme == 'https'
       http.read_timeout = @cfg.timeout_seconds
+      http.open_timeout = 10
 
       request = Net::HTTP::Post.new(uri.path)
       request['Authorization'] = "Bearer #{@cfg.api_key}"

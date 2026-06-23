@@ -49,6 +49,12 @@ module DebugAgent
 
     @metric_snapshot_counter += 1
     snapshot_id = "snap-#{@metric_snapshot_counter}"
+
+    # Enforce max 100 snapshots to prevent unbounded growth
+    if @metric_snapshots.size >= 100
+      oldest_key = @metric_snapshots.keys.min_by { |k| k[/\d+/].to_i }
+      @metric_snapshots.delete(oldest_key)
+    end
     @metric_snapshots[snapshot_id] = metrics
 
     {

@@ -1,5 +1,6 @@
 module DebugAgent
   CATEGORY_MAP = {
+    # Memory & GC
     'gc'            => 'Memory & GC',
     'object_space'  => 'Memory & GC',
     'memory'        => 'Memory & GC',
@@ -7,22 +8,101 @@ module DebugAgent
     'allocations'   => 'Memory & GC',
     'force_gc'      => 'Memory & GC',
     'trigger_gc'    => 'Memory & GC',
+    'leak'          => 'Memory & GC',
+    'heap'          => 'Memory & GC',
+    'snapshot'      => 'Memory & Snapshots',
+    'compare'       => 'Memory & Snapshots',
+    # Process & Runtime
     'process'       => 'Process Info',
     'cpu'           => 'Process Info',
     'uptime'        => 'Process Info',
-    'thread'        => 'Threads',
+    'runtime'       => 'Runtime Info',
     'system'        => 'System Info',
     'disk'          => 'System Info',
-    'environment'   => 'System Info',
+    'environment'   => 'Environment & Config',
+    # Threads & Locks
+    'thread'        => 'Threads & Locks',
+    'lock'          => 'Threads & Locks',
+    'deadlock'      => 'Threads & Locks',
+    'contention'    => 'Threads & Locks',
+    'gvl'           => 'Threads & Locks',
+    'mutex'         => 'Threads & Locks',
+    'fiber'         => 'Threads & Locks',
+    # Framework
     'routes'        => 'Framework & Routes',
     'middleware'    => 'Framework & Routes',
-    'runtime'       => 'Runtime Info',
+    'rails'         => 'Framework & Routes',
+    'sinatra'       => 'Framework & Routes',
+    # HTTP
     'recent'        => 'HTTP Requests',
     'slow'          => 'HTTP Requests',
-    'error'         => 'HTTP Requests',
+    'error'         => 'Error Tracking',
     'request'       => 'HTTP Requests',
-    'gem'           => 'Dependencies',
+    'http'          => 'HTTP Requests',
+    'outbound'      => 'HTTP Requests',
+    'faraday'       => 'HTTP Requests',
+    # Database
+    'active_record' => 'Database',
+    'migration'     => 'Database Migration',
+    'pending'       => 'Database Migration',
+    'sql'           => 'Database',
+    'database'      => 'Database',
+    # Configuration
+    'config'        => 'Configuration',
+    'env'           => 'Configuration',
+    # Cache
+    'cache'         => 'Cache',
+    # Health & Security
+    'health'        => 'Health Checks',
+    'auth'          => 'Security',
+    'cors'          => 'Security',
+    # WebSocket
+    'ws'            => 'WebSocket',
+    'websocket'     => 'WebSocket',
+    # Profiling
+    'start'         => 'Profiling',
+    'stop'          => 'Profiling',
+    'top'           => 'Profiling',
+    'profile'       => 'Profiling',
+    # Feature Flags
+    'feature'       => 'Feature Flags',
+    'flag'          => 'Feature Flags',
+    'evaluate'      => 'Feature Flags',
+    # Endpoint Testing
+    'test'          => 'Endpoint Testing',
+    'batch'         => 'Endpoint Testing',
+    'endpoint'      => 'Endpoint Testing',
+    'coverage'      => 'Endpoint Testing',
+    # Connection Pool
+    'pool'          => 'Connection Pool',
+    'connection'    => 'Connection Pool',
+    # File Descriptors
+    'fd'            => 'File Descriptors',
+    'handle'        => 'File Descriptors',
+    # Metrics
+    'metric'        => 'Metrics',
+    'counter'       => 'Metrics',
+    # Build & Deployment
+    'build'         => 'Build & Deployment',
+    'deployment'    => 'Build & Deployment',
+    'version'       => 'Build & Deployment',
+    # Service Registry
+    'registered'    => 'Service Registry',
+    'service'       => 'Service Registry',
+    'dependencies'  => 'Service Registry',
+    # Job Queue
+    'sidekiq'       => 'Job Queue',
+    'queue'         => 'Job Queue',
+    'job'           => 'Job Queue',
+    # Redis
+    'redis'         => 'Redis',
+    # Logging
+    'log'           => 'Logging',
+    # Modules & Dependencies
     'module'        => 'Module Info',
+    'gem'           => 'Dependencies',
+    'loaded'        => 'Module Info',
+    'installed'     => 'Dependencies',
   }.freeze
 
   class SystemPromptBuilder

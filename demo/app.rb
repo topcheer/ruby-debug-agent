@@ -735,3 +735,20 @@ puts "  WebSocket:     #{WS_AVAILABLE ? 'enabled (faye-websocket)' : 'disabled (
 puts ''
 
 OrderApp.run!
+
+# Production-grade signal handlers
+Signal.trap('TERM') do
+  puts "\n[Shutting Down] Received SIGTERM, exiting gracefully..."
+  exit(0)
+end
+
+Signal.trap('INT') do
+  puts "\n[Shutting Down] Received SIGINT, exiting..."
+  exit(0)
+end
+
+at_exit do
+  puts "[Cleanup] Cleaning up resources..."
+end
+
+OrderApp.run!

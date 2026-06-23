@@ -45,6 +45,11 @@ module DebugAgent
       heap_pages: gc_stats[:heap_length]
     }
 
+    # Enforce max 50 heap snapshots to prevent unbounded memory growth
+    if @heap_snapshots.size >= 50
+      oldest_key = @heap_snapshots.keys.min_by { |k| k[/\d+/].to_i }
+      @heap_snapshots.delete(oldest_key)
+    end
     @heap_snapshots[snapshot_id] = snapshot
 
     {
